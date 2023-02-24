@@ -8,7 +8,7 @@ const suffixes = [
 
 const state = reactive({
   searchVal: '',
-  results: [],
+  results: [{}],
   suggestions: [''],
 })
 
@@ -39,14 +39,40 @@ const generateNames = () => {
 
 const handleSearch = (event: { preventDefault: () => void; }) => {
   event.preventDefault();
-  const searchTerm = state.searchVal.split(' ').join('+');
-  axios.get(`https://api.datamuse.com/words?ml=${searchTerm}`)
-      .then((response) => {
-        // handle success
-        console.log(response);
-        state.results = response.data;
-        generateNames();
-      });
+  const searchTerms = state.searchVal.split(' ');
+  if (searchTerms.length > 1) {
+    searchTerms.forEach((term) => {
+      axios.get(`https://api.datamuse.com/words?ml=${term}`)
+          .then((response) => {
+            state.results.push(...response.data);
+          });
+      axios.get(`https://api.datamuse.com/words?sl=${term}`)
+          .then((response) => {
+            state.results.push(...response.data);
+          });
+    })
+    const searchTerm = state.searchVal.split(' ').join('+');
+    axios.get(`https://api.datamuse.com/words?ml=${searchTerm}`)
+        .then((response) => {
+          state.results.push(...response.data);
+          generateNames();
+        });
+  } else {
+    axios.get(`https://api.datamuse.com/words?ml=${state.searchVal}`)
+        .then((response) => {
+          // handle success
+          console.log(response);
+          state.results.push(...response.data);
+        });
+    axios.get(`https://api.datamuse.com/words?sl=${state.searchVal}`)
+        .then((response) => {
+          // handle success
+          console.log(response);
+          state.results.push(...response.data);
+          generateNames();
+        });
+  }
+
 }
 
 </script>
@@ -71,9 +97,9 @@ const handleSearch = (event: { preventDefault: () => void; }) => {
       </button>
     </div>
   </form>
-  <div v-if="state.searchVal">
+  <div v-if="state.results.length > 1">
     <button @click="generateNames">Regenerate</button>
-    <li v-for="suggestion in state.suggestions" key="suggestion">
+    <li v-for="suggestion in state.suggestions">
       {{ suggestion }}
     </li>
   </div>
